@@ -12,7 +12,7 @@
 
 //----------------------------------------------------------------------------
 // Enclose everything inside a namespace.
-<<<<<<< HEAD
+
 (function(cbImagePaste, $, undefined) {
 
   // pasted image
@@ -21,8 +21,9 @@
   // dialog object
   var dialog;
 
+	// intera edit
   // jcrop api
-  var jcrop_api;
+  //var jcrop_api;
 
   // actual crop coordinates
   var cropCoords;
@@ -197,11 +198,12 @@
   // Show scaled panel with pasted image.
   function createPanel() {
     // destroy old cropping handler
+		/*
     if (jcrop_api) {
       jcrop_api.destroy();
       delete jcrop_api;
     }
-
+		*/
     // remove old canvas
     $("#cbp_panel_box").empty();
 
@@ -233,10 +235,30 @@
       boxh = pastedImage.height;
     }
 
-    var panel = document.createElement("canvas");
-    panel.width  = boxw;
-    panel.height = boxh;
+    //var panel = document.createElement("canvas");
 
+		// start intera code
+		var canvasEl = document.createElement("canvas")
+		// the element must have been inserted before new fabric.Canvas or events wont work
+		$("#cbp_panel_box").css("position", "relative").append(canvasEl);
+		var canvas = new fabric.Canvas(canvasEl)
+		//limitObjectsToCanvas(canvas)
+		//canvasFixStrokeWidthScaling(canvas)
+		var image = new fabric.Image(pastedImage, {
+		  width: boxw,
+		  height: boxh,
+			selectable: false
+		});
+		canvas.setWidth(boxw)
+		canvas.setHeight(boxh)
+		canvas.add(image)
+		imageEditor.canvas = canvas
+		imageEditor.image = image
+		// end intera code
+
+    //panel.width  = boxw;
+    //panel.height = boxh;
+/*
     var ctx = panel.getContext("2d");
     // clear canvas
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
@@ -244,7 +266,6 @@
     ctx.drawImage(pastedImage, 0, 0, ctx.canvas.width, ctx.canvas.height);
 
     $("#cbp_panel_box").append(panel);
-
     // create cropping handler
     $(panel).Jcrop({
       onChange: showPreview,
@@ -257,6 +278,7 @@
     });
 
     showPreview();
+*/
   };
 
   //----------------------------------------------------------------------------
@@ -518,7 +540,6 @@
         return false;
       });
     });
-
     fields.append(s);
 
     $(dialog).dialog("close");
@@ -527,6 +548,11 @@
   //----------------------------------------------------------------------------
   // Create final image url.
   function getImageUrl() {
+		var image = imageEditor.getImageUrl()
+		console.log(image)
+		return image
+		//return image.toDataURL("image/png")
+		/*
     // create temporary canvas
     var dst = document.createElement("canvas");
     dst.width  = Math.round(cropCoords.w);
@@ -538,6 +564,7 @@
       0, 0, dst.width, dst.height);
 
     return dst.toDataURL("image/png");
+		*/
   };
 
   //----------------------------------------------------------------------------
@@ -562,7 +589,7 @@
   // Move image attachment block to proper place (after "add another file" link).
   // and detach element not required in DOM.
   $(document).ready(function() {
-    // detach input skeleton from the form avoiding posting it
+		// detach input skeleton from the form avoiding posting it
     inputSkeleton = $("#cbp_image_field");
     if (inputSkeleton)
       inputSkeleton.detach();
@@ -592,6 +619,11 @@
       return;
 
     addFile.after(imageForm);
+
+		// start intera code
+		imageEditor.insertToolbar()
+		$("a.add_attachment").click()
+		// end intera code
   });
 
 }(window.cbImagePaste = window.cbImagePaste || {}, jQuery));
