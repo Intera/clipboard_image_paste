@@ -307,10 +307,22 @@
       left: 0
     };
 
+		// added by intera
+		function cloneCanvas(oldCanvas) {
+		  var newCanvas = document.createElement('canvas');
+		  var context = newCanvas.getContext('2d');
+		  newCanvas.width = oldCanvas.width;
+		  newCanvas.height = oldCanvas.height;
+		  context.drawImage(oldCanvas, 0, 0);
+		  return newCanvas;
+		}
+		var isCanvas = (obj.tagName == 'CANVAS')
+		// end
+
     var $origimg = $(obj),
       img_mode = true;
 
-    if (obj.tagName == 'IMG') {
+    if ((obj.tagName == 'IMG') || isCanvas) {
       // Fix size of crop image.
       // Necessary when crop image is within a hidden element when page is loaded.
       if ($origimg[0].width != 0 && $origimg[0].height != 0) {
@@ -325,7 +337,15 @@
         $origimg.height(tempImage.height);
       }
 
-      var $img = $origimg.clone().removeAttr('id').css(img_css).show();
+			// added by intera
+			if(isCanvas) {
+				var $img = $(cloneCanvas($origimg[0]))
+				img_mode = false;
+				if (options.shade === null) { options.shade = true; }
+			} else {
+				var $img = $origimg.clone().removeAttr('id').css(img_css).show();
+			}
+			// end
 
       $img.width($origimg.width());
       $img.height($origimg.height());
