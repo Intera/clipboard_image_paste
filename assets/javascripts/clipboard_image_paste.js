@@ -242,8 +242,8 @@
 		// the element must have been inserted before new fabric.Canvas or events wont work
 		$("#cbp_panel_box").css("position", "relative").append(canvasEl);
 		var canvas = new fabric.Canvas(canvasEl)
-		//limitObjectsToCanvas(canvas)
-		//canvasFixStrokeWidthScaling(canvas)
+		fabricHelper.keepObjectsInsideCanvas(canvas)
+		fabricHelper.keepStrokeWidthWhenScaling(canvas)
 		var image = new fabric.Image(pastedImage, {
 		  width: boxw,
 		  height: boxh,
@@ -252,8 +252,7 @@
 		canvas.setWidth(boxw)
 		canvas.setHeight(boxh)
 		canvas.add(image)
-		imageEditor.canvas = canvas
-		imageEditor.image = image
+		imageEditor.setCanvasAndImage(canvas, image)
 		// end intera code
 
     //panel.width  = boxw;
@@ -548,8 +547,7 @@
   //----------------------------------------------------------------------------
   // Create final image url.
   function getImageUrl() {
-		var image = imageEditor.getImageUrl()
-		console.log(image)
+		var image = imageEditor.getDataUrl()
 		return image
 		//return image.toDataURL("image/png")
 		/*

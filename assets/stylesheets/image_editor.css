@@ -1,0 +1,38 @@
+canvas {
+  cursor: default;
+}
+
+.image_editor.toolbar > .button {
+  padding: 0.5rem;
+  display: inline-block;
+  color: #333;
+  /* like #cbp_instructions */
+  font-size: 80%;
+}
+
+.image_editor.toolbar > .button:not(:first-child) {
+  border-left: 1px solid #aaa;
+}
+
+.image_editor.toolbar > .button:hover {
+  background-color: #f3f3f3;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.image_editor.toolbar > .button.active {
+  background-color: #aaa;
+}
+
+.image_editor.toolbar {
+  border: 1px solid #aaa;
+  border-radius: 3px;
+  background-color: #fff;
+  margin-top: 5px;
+  display: inline-block;
+}
+
+#cbp_instructions {
+  height: auto;
+  padding: 0.5rem;
+}
