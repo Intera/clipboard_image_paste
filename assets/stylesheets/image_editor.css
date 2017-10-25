@@ -36,3 +36,13 @@ canvas {
   height: auto;
   padding: 0.5rem;
 }
+
+#cbp_panel_box {
+  margin-top: 5px;
+  border-width: 2px;
+}
+
+.ui-dialog .ui-dialog-content {
+  padding-top: 5px;
+  padding-bottom: 0px;
+}
