@@ -42,6 +42,10 @@ canvas {
   border-width: 2px;
 }
 
+#cbp_paste_dlg {
+  padding: 0;
+}
+
 .ui-dialog .ui-dialog-content {
   padding-top: 5px;
   padding-bottom: 0px;

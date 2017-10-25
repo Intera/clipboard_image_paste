@@ -202,6 +202,10 @@
 		}
 	};
 
+	function setPastedImage(a) {
+		pastedImage = a
+	}
+
 	//----------------------------------------------------------------------------
 	// Show scaled panel with pasted image.
 	function createPanel() {
@@ -622,7 +626,8 @@
 
 		// start intera code
 		imageEditor.init({
-			deinitPasteListener: deinitPasteListener
+			deinitPasteListener: deinitPasteListener,
+			setPastedImage: setPastedImage
 		})
 		$("#cbp_header_box").append(imageEditor.createToolbar())
 

@@ -1,5 +1,11 @@
 // this file implements image editing functionality for the clipboard_paste overlay and replaces jcrop for cropping
 
+function callEach(array) {
+	array.forEach(function (a) {
+		a()
+	})
+}
+
 var fabricHelper = {
 	// only depends on fabric.js
 
@@ -77,6 +83,10 @@ var fabricHelper = {
 		})
 	},
 
+	objectExists: function (canvas, a) {
+		return canvas.getObjects().includes(a)
+	},
+
 	setSelectableOnly: function (canvas, object, selectable) {
 		// set .selectable only for the given object and set it to the opposite for all other objects.
 		// * true: make the given object selectable and all other objects unselectable
@@ -85,20 +95,37 @@ var fabricHelper = {
 			a.selectable = false;
 		})
 		object.selectable = true;
+	},
+
+	disableDeselection: function (canvas, object) {
+		// fabric -> function:reenable
+		var handler = function (event) {
+			if (fabricHelper.objectExists(canvas, object)) {
+				canvas.setActiveObject(object);
+			}
+		}
+		object.on("deselected", handler)
+		return function () {
+			object.off("deselected", handler)
+		}
 	}
 }
 
 var imageEditor = {
+	// fabric.Canvas
 	canvas: null,
+	// fabric.Image
 	image: null,
 	toolbar: null,
 	activeTool: false,
 	deinitPasteListener: null,
+	setPastedImage: null,
 	colors: {
 		red: "#dd0000"
 	},
 	init: function (options) {
 		this.deinitPasteListener = options.deinitPasteListener
+		this.setPastedImage = options.setPastedImage
 	},
 	hide: function (options) {
 		this.toolbar.hide()
@@ -146,7 +173,7 @@ var imageEditor = {
 		return row
 	},
 	documentOnClick: function (event) {
-		console.log("called")
+		console.log("documentonclick")
 		// remove selected elements on delete press
 		var deleteKey = 46;
 		if (deleteKey == event.which) {
@@ -156,32 +183,31 @@ var imageEditor = {
 	setImage: function (canvasEl, image, width, height) {
 		// element image number number -> jQuery
 		if (this.canvas) this.canvas.dispose()
+		if (this.activeTool) this.deactivateTool(this.activeTool)
 		this.toolbar.show()
-		this.image = image
 		// disable the listener for new pasted images because it easily conflicts with tools,
 		// for example because it eventually uses an input field that is repeatedly re-focused.
 		// it is re-initialised when the dialog is opened again
 		this.deinitPasteListener()
 		var canvas = new fabric.Canvas(canvasEl)
-		//fabricHelper.keepObjectsInsideCanvas(canvas)
+		//x fabricHelper.keepObjectsInsideCanvas(canvas)
 		fabricHelper.keepStrokeWidthWhenScaling(canvas)
 		this.canvas = canvas
 		var image = new fabric.Image(image, {
-			width: width,
-			height: height,
 			selectable: false
 		});
+		this.image = image
+		image.scaleToWidth(width)
 		canvas.setWidth(width)
 		canvas.setHeight(height)
 		canvas.add(image)
 		// initialise remove element on delete press functionality
-		//var doc = $(document)
-		//doc.off(this.documentOnClick).keydown(this.documentOnClick)
+		//x var doc = $(document)
+		//x doc.off(this.documentOnClick).keydown(this.documentOnClick)
 	},
 	getDataUrl: function () {
 		// -> string
 		// get a browser internal url to the final image
-		//return fabricCrop.getDataUrl()
 		return this.canvas.toDataURL()
 	}
 }
@@ -201,10 +227,8 @@ imageEditor.tools = {
 	*/
 	"crop": {
 		activate: function () {
-			if (!fabricCrop.selection) {
-				fabricCrop.init(imageEditor.canvas, imageEditor.image)
-				imageEditor.canvas.selection = false
-			}
+			fabricCrop.init(imageEditor.canvas, imageEditor.image)
+			//x imageEditor.canvas.selection = false
 			fabricCrop.show(imageEditor.canvas)
 		},
 		deactivate: function () {
@@ -252,80 +276,122 @@ var fabricCrop = {
 	selection: null,
 	image: null,
 	canvas: null,
+	mask: null,
+	onHide: [],
+	onDeinit: [],
 	init: function (canvas, image) {
-		console.log("init crop")
+		this.deinit()
 		this.canvas = canvas
 		this.image = image
-		this.selection = new fabric.Rect({
-			fill: "transparent",
+		var selection = new fabric.Rect({
+			fill: "#fff",
 			visible: true,
 			hasRotatingPoint: false,
-			width: 240,
-			height: 240
+			width: image.width * 0.8,
+			height: image.height * 0.8,
+			top: 0,
+			left: 0,
+			globalCompositeOperation: "destination-out"
 		})
-		fabric.util.addListener(this.canvas.upperCanvasEl, "dblclick", function (event) {
+		this.selection = selection
+		mask = new fabric.Rect({
+			fill: "rgba(128, 128, 128, 0.5)",
+			visible: true,
+			hasRotatingPoint: false,
+			width: image.width,
+			height: image.height,
+			top: 0,
+			left: 0
+		})
+		this.mask = mask
+		var onDblClick = function (event) {
 			var target = canvas.findTarget(event)
 			if (fabricCrop.selection === target) {
 				fabricCrop.applyCrop()
 			}
-		});
-		var a = this.selection
-		this.canvas.add(a).setActiveObject(a)
+		}
+		var upperCanvasEl = this.canvas.upperCanvasEl
+		fabric.util.addListener(upperCanvasEl, "dblclick", onDblClick);
+		this.onDeinit.push(function () {
+			fabric.util.removeListener(upperCanvasEl)
+			canvas.remove(selection)
+			canvas.remove(mask)
+		})
+		this.canvas
+			.add(mask)
+			.add(selection)
+			.setActiveObject(selection)
 	},
-	resetSelection: function() {
+	deinit: function () {
+		callEach(this.onDeinit)
+	},
+	resetSelection: function () {
 		// make the selection smaller than the image and move it to the top left of the image
-		this.selection.width = this.image.width * 0.8
-		this.selection.height = this.image.height * 0.8
-		this.selection.top = 0
-		this.selection.left = 0
+		var a = this.selection
+		a.width = this.image.width * 0.8
+		a.height = this.image.height * 0.8
+		a.top = 0
+		a.left = 0
+		a.scaleX = 1
+		a.scaleY = 1
 	},
 	applyCrop: function () {
-		canvas = this.canvas
 		var cropped = new Image()
+		this.selection.visible = false
 		cropped.src = this.getDataUrl()
-		// debug
-		$("#cbp_paste_dlg").append($("<img>", {src: cropped.src}))
-		// remove old image
+		$("#cbp_panel_box").append(cropped)
+		this.selection.visible = true
+		// remove old image and elements
+		canvas = this.canvas
 		canvas.remove(this.image)
+		var selection = this.selection
+		// remove all elements except for the selection
+		canvas.getObjects().forEach(function (a) {
+			if (a != selection) {
+				canvas.remove(a)
+			}
+		})
 		cropped.onload = function () {
 			image = new fabric.Image(cropped)
 			image.selectable = false
 			image.visible = true
-			//fabricCrop.image = image
+			fabricCrop.image = image
+			imageEditor.setPastedImage(cropped)
+			imageEditor.image = cropped
 			canvas.add(image)
 			canvas.sendToBack(image)
 			canvas.setWidth(image.width)
 			canvas.setHeight(image.height)
-			//fabricCrop.resetSelection()
+			fabricCrop.resetSelection()
+			canvas.setActiveObject(this.selection)
 			canvas.renderAll()
 		};
 	},
 	show: function () {
-		var a = this.selection
-		a.visible = true
+		this.selection.visible = true
 		// disable other objects, allow only the selection to be selected
-		fabricHelper.setSelectableOnly(this.canvas, a, true)
+		fabricHelper.setSelectableOnly(this.canvas, this.selection, true)
+		var reenableDeselection = fabricHelper.disableDeselection(this.canvas, this.selection)
+		this.onHide.push(reenableDeselection)
+		this.canvas.renderAll()
 	},
 	hide: function () {
 		this.selection.visible = false
 		// enable other objects
 		fabricHelper.setSelectableOnly(this.canvas, this.selection, false)
 		this.image.selectable = false
-		this.canvas.renderAll()
-	},
-	destroy: function () {
-		this.canvas.remove(this.selection);
+		callEach(this.onHide)
+		this.canvas.discardActiveObject()
 		this.canvas.renderAll()
 	},
 	getDataUrl: function () {
 		// return a browser internal data url for the cropped image.
 		var a = this.selection
-		console.log(a.left, a.top, a.width, a.height, imageEditor.image.width, imageEditor.image.height)
 		return this.canvas.toDataURL({
 			left: a.left,
 			top: a.top,
-			width: a.width,
-			height: a.height
+			width: a.width * a.scaleX,
+			height: a.height * a.scaleY
 		})
 	}
 }
