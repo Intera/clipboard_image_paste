@@ -1,5 +1,12 @@
 h1. Redmine clipboard_image_paste plugin
 
+h2. Extensions in this fork
+the branch "add-annotation-features" is work in progress and re-implements the crop functionality with fabricjs and adds a free-drawing marker tool to make annotations.
+it offers an image editor object that takes an image and shows a toolbar and calls activate/deactivate handlers for tools defined in a configuration object.
+better crop handling, text annotations and arrows are on the roadmap.
+
+h2. General
+
 Paste (cropped) image from clipboard as an attachment.
 
 !https://raw.github.com/peclik/clipboard_image_paste/master/suppl/cbp_logo.png!
@@ -77,8 +84,8 @@ h2. Known issues:
   while Redmine's original 'Add another file' counts only regular files
 * ability to copy&paste images from clipboard depends on browsers capabilities
   - some browsers don't support all image formats in the clipboard
-* Redmine 2.5 and older: attached image will be visibile in exported PDFs only 
-  if RMagick is installed (this is a limit of PDF export in Redmine - alpha channel 
+* Redmine 2.5 and older: attached image will be visibile in exported PDFs only
+  if RMagick is installed (this is a limit of PDF export in Redmine - alpha channel
   must be removed from png image)
 * see Compatibility section for incompatible plug-ins
 
