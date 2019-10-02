@@ -154,10 +154,11 @@ var imageEditor = {
 		this.activeTool = false
 		$(".toolbar.image_editor .button.name-" + name).removeClass("active")
 	},
-	createToolbarButton: function (name, handler) {
+	createToolbarButton: function (config, name) {
 		// string function -> jQuery
 		// create one button for the toolbar
 		return $("<span>", {
+			title: config.description,
 			html: name,
 			"class": "button name-" + name,
 			click: function () {
@@ -168,19 +169,25 @@ var imageEditor = {
 	createToolbar: function () {
 		// -> jQuery
 		// create the toolbar dom/jquery object
-		toolNames = Object.keys(imageEditor.tools)
 		var row = $("<div>").addClass("toolbar image_editor").hide()
-		row.append(toolNames.map(this.createToolbarButton))
+		row.append($.map(imageEditor.tools, (this.createToolbarButton)))
 		this.toolbar = row
 		return row
 	},
 	documentOnKeypress: function (event) {
-		console.log("documentonclick")
 		// remove selected elements on delete press
 		var deleteKey = 46;
 		if (deleteKey == event.which) {
 			fabricHelper.removeSelected(imageEditor.canvas)
 		}
+	},
+	setDefaultSelectionStyle: function (object) {
+		object.set({
+			borderColor: "blue",
+			cornerColor: "green",
+			cornerSize: 6,
+			transparentCorners: false
+		})
 	},
 	setImage: function (canvasEl, image, width, height) {
 		// element image number number -> jQuery
@@ -218,7 +225,6 @@ imageEditor.tools = {
 	// each entry is automatically available for activation in the toolbar and the
 	// activate/deactivate functions, if available, are eventually called
 	// when a tool is selected in the toolbar.
-	/*
 	"select": {
     description: "free object selection/move/resize/delete/etc mode",
 		activate: function () {
@@ -227,12 +233,10 @@ imageEditor.tools = {
 			// this is a mode where all other modes are disabled
 		}
 	},
-	*/
 	"crop": {
 		description: "crop the image to a rectangular area",
 		activate: function () {
 			fabricCrop.init(imageEditor.canvas, imageEditor.image)
-			//x imageEditor.canvas.selection = false
 			fabricCrop.enable(imageEditor.canvas)
 		},
 		deactivate: function () {
@@ -252,7 +256,6 @@ imageEditor.tools = {
 			imageEditor.canvas.isDrawingMode = false
 		}
 	},
-	/*
 	"text": {
 	  description: "add text objects",
 		activate: function () {
@@ -268,6 +271,7 @@ imageEditor.tools = {
 			imageEditor.deactivateTool("text")
 		}
 	}
+	/*
 	"arrow": {
     description: "add arrow objects with handles for length and angle",
 		activate: function () {
@@ -295,6 +299,12 @@ var fabricRectangleMask = {
 	},
 	createRectangle(width, height) {
 		return new fabric.Rect({
+			// selection style properties
+			hasBorders: false,
+			cornerColor: "black",
+			cornerSize: 10,
+			transparentCorners: false,
+			// other properties
 			fill: "transparent",
 			visible: true,
 			hasRotatingPoint: false,
@@ -313,7 +323,7 @@ var fabricRectangleMask = {
 		this.options = o
 		this.width = o.width || 100
 		this.height = o.height || 100
-		this.mask.fill = o.maskFill || "rgba(0,0,0,0.25)"
+		this.mask.fill = o.maskFill || "rgba(0,0,0,0.33)"
 		// create a center area rectangle object
 		this.rect = this.createRectangle(o.rectangleWidth || o.width * 0.5, o.rectangleHeight || o.height * 0.5)
 		// set initial properties
@@ -354,19 +364,20 @@ var fabricRectangleMask = {
 		})
 	},
 	hide: function () {
-		this.rect.visible = false
-		this.mask.top.visible = false
-		this.mask.right.visible = false
-		this.mask.bottom.visible = false
-		this.mask.left.visible = false
-
+		var a = fabricRectangleMask
+		a.rect.visible = false
+		a.mask.top.visible = false
+		a.mask.right.visible = false
+		a.mask.bottom.visible = false
+		a.mask.left.visible = false
 	},
 	show: function () {
-		this.rect.visible = true
-		this.mask.top.visible = true
-		this.mask.right.visible = true
-		this.mask.bottom.visible = true
-		this.mask.left.visible = true
+		var a = fabricRectangleMask
+		a.rect.visible = true
+		a.mask.top.visible = true
+		a.mask.right.visible = true
+		a.mask.bottom.visible = true
+		a.mask.left.visible = true
 	},
 	updateMask: function () {
 		// update properties
@@ -421,12 +432,23 @@ var fabricCrop = {
 				fabricCrop.applyCrop()
 			}
 		}
+		var onKeydown = function(event) {
+			var enterKey = 46;
+			console.log("cut", event.which)
+			if (enterKey == event.which) {
+				fabricCrop.applyCrop()
+			}
+		}
 		var upperCanvasEl = this.canvas.upperCanvasEl
 		fabric.util.addListener(upperCanvasEl, "dblclick", onDblClick);
+		fabric.util.addListener(upperCanvasEl, "keydown", onKeydown);
 		this.onDeinit.push(function () {
-			fabric.util.removeListener(upperCanvasEl)
-			fabricRectangleMask.removeFrom(canvas)
-			fabricRectangleMask.deinit()
+			fabric.util.removeListener(upperCanvasEl, "dblclick", onDblClick)
+			fabric.util.removeListener(upperCanvasEl, "keydown", onKeydown)
+			if (fabricRectangleMask.rect) {
+				fabricRectangleMask.removeFrom(canvas)
+				fabricRectangleMask.deinit()
+			}
 		})
 		this.canvas.setActiveObject(this.selection)
 	},
@@ -445,13 +467,13 @@ var fabricCrop = {
 		fabricRectangleMask.removeFrom(canvas)
 		fabricRectangleMask.deinit()
 		cropped.src = this.getDataUrl()
-		// remove old image and fabric objects
-		canvas.remove(this.image)
-		canvas.getObjects().forEach(function (a) {
-			canvas.remove(a)
-		})
 		// replace the old image with the cropped image
 		cropped.onload = function () {
+			// remove old image and fabric objects
+			canvas.remove(this.image)
+			canvas.getObjects().forEach(function (a) {
+				canvas.remove(a)
+			})
 			image = new fabric.Image(cropped)
 			image.selectable = false
 			image.visible = true
@@ -468,17 +490,17 @@ var fabricCrop = {
 	enable: function () {
 		this.selection.visible = true
 		// disable other objects, allow only the selection to be selected
-		//fabricHelper.setSelectableOnly(this.canvas, this.selection, true)
+		fabricHelper.setSelectableOnly(this.canvas, this.selection, true)
 		var reenableDeselection = fabricHelper.disableDeselection(this.canvas, this.selection)
 		this.onDisable.push(reenableDeselection)
-		fabricRectangleMask.show()
+		fabricRectangleMask.rect && fabricRectangleMask.show()
 		this.canvas.renderAll()
 	},
 	disable: function () {
-		fabricRectangleMask.hide()
+		fabricRectangleMask.rect && fabricRectangleMask.hide()
 		this.selection.visible = false
 		// enable other objects
-		//fabricHelper.setSelectableOnly(this.canvas, this.selection, false)
+		fabricHelper.setSelectableOnly(this.canvas, this.selection, false)
 		this.image.selectable = false
 		callEach(this.onDisable)
 		this.canvas.discardActiveObject()
